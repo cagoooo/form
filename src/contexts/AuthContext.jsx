@@ -55,7 +55,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     const loginWithSharedAccount = () => {
-        return signInWithEmailAndPassword(auth, 'admin@form.system', 'smes1234');
+        return signInWithEmailAndPassword(
+            auth,
+            import.meta.env.VITE_ADMIN_EMAIL,
+            import.meta.env.VITE_ADMIN_PASSWORD
+        );
     };
 
     const logout = () => {

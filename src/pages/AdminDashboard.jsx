@@ -39,7 +39,15 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id, createdBy) => {
+        // Permission check
+        if (userRole !== 'admin') {
+            if (createdBy !== currentUser.uid) {
+                alert('權限不足：您只能刪除自己建立的表單');
+                return;
+            }
+        }
+
         if (window.confirm('確定要刪除此模板嗎？此動作無法復原。')) {
             try {
                 await deleteDoc(doc(db, 'templates', id));
@@ -155,9 +163,11 @@ const AdminDashboard = () => {
                                                 <Link to={`/form/${template.id}`} target="_blank" className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="預覽">
                                                     <Eye size={18} />
                                                 </Link>
-                                                <button onClick={() => handleDelete(template.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="刪除">
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                {(userRole === 'admin' || template.createdBy === currentUser?.uid) && (
+                                                    <button onClick={() => handleDelete(template.id, template.createdBy)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="刪除">
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
                                             </div>
                                             <Link to={`/admin/submissions/${template.id}`} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition flex items-center gap-2">
                                                 查看回應

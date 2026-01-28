@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { User, Shield, ShieldAlert, CheckCircle } from 'lucide-react';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { User, Shield, ShieldAlert, CheckCircle, Trash2 } from 'lucide-react';
 
 const UserManager = () => {
     const [users, setUsers] = useState([]);
@@ -38,6 +38,18 @@ const UserManager = () => {
         }
     };
 
+    const deleteUser = async (userId) => {
+        if (window.confirm('確定要刪除此使用者嗎？此動作只會刪除資料庫紀錄，無法刪除 Firebase Auth 帳號。')) {
+            try {
+                await deleteDoc(doc(db, 'users', userId));
+                setUsers(prev => prev.filter(user => user.id !== userId));
+            } catch (error) {
+                console.error("Error deleting user:", error);
+                alert("刪除失敗");
+            }
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-slate-500">載入使用者名單中...</div>;
 
     return (
@@ -63,37 +75,57 @@ const UserManager = () => {
                                     <div className={`p-2 rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
                                         <User size={18} />
                                     </div>
-                                    {user.email}
+                                    <div className="flex flex-col">
+                                        <span>{user.email}</span>
+                                        <span className="text-xs text-slate-400 font-mono">ID: {user.id.slice(0, 8)}...</span>
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${user.role === 'admin'
-                                            ? 'bg-purple-100 text-purple-700 border border-purple-200'
-                                            : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                        ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                        : 'bg-blue-50 text-blue-600 border border-blue-100'
                                         }`}>
                                         {user.role || 'EDITOR'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button
-                                        onClick={() => toggleRole(user.id, user.role)}
-                                        disabled={user.email === 'admin@form.system' || user.email === currentUser?.email}
-                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 ml-auto ${user.email === 'admin@form.system' || user.email === currentUser?.email
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button
+                                            onClick={() => toggleRole(user.id, user.role)}
+                                            disabled={user.email === import.meta.env.VITE_ADMIN_EMAIL || user.email === currentUser?.email}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 ${user.email === import.meta.env.VITE_ADMIN_EMAIL || user.email === currentUser?.email
                                                 ? 'opacity-50 cursor-not-allowed bg-slate-100 text-slate-400'
                                                 : user.role === 'admin'
                                                     ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                                                     : 'bg-purple-600 text-white hover:bg-purple-700 shadow-md shadow-purple-200'
-                                            }`}
-                                    >
-                                        {user.role === 'admin' ? (
-                                            <>
-                                                <ShieldAlert size={14} /> 降級為 Editor
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Shield size={14} /> 升級為 Admin
-                                            </>
-                                        )}
-                                    </button>
+                                                }`}
+                                        >
+                                            {user.role === 'admin' ? (
+                                                <>
+                                                    <ShieldAlert size={14} /> 降級
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Shield size={14} /> 升級
+                                                </>
+                                            )}
+                                        </button>
+
+                                        {/* Delete Button */}
+                                        {/* Show if: 1. Not self AND (2. Not super admin OR 3. Current user IS super admin) */}
+                                        {user.id !== currentUser?.uid && (
+                                            user.email !== import.meta.env.VITE_ADMIN_EMAIL ||
+                                            currentUser?.email === import.meta.env.VITE_ADMIN_EMAIL
+                                        ) && (
+                                                <button
+                                                    onClick={() => deleteUser(user.id)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                    title="移除使用者紀錄"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}

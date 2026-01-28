@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 import { Plus, Trash2, Save, ArrowLeft, GripVertical, Settings, Layout } from 'lucide-react';
 
 const TemplateEditor = () => {
     const { templateId } = useParams();
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -44,9 +46,17 @@ const TemplateEditor = () => {
         setSaving(true);
         try {
             if (templateId === 'new') {
-                await addDoc(collection(db, 'templates'), template);
+                const newTemplate = {
+                    ...template,
+                    createdBy: currentUser.uid,
+                    createdAt: new Date()
+                };
+                await addDoc(collection(db, 'templates'), newTemplate);
             } else {
-                await setDoc(doc(db, 'templates', templateId), template);
+                await setDoc(doc(db, 'templates', templateId), {
+                    ...template,
+                    updatedAt: new Date()
+                }, { merge: true });
             }
             alert('儲存成功');
             navigate('/admin/dashboard');

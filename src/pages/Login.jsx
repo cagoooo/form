@@ -22,7 +22,8 @@ const Login = () => {
         setError('');
         setLoading(true);
         try {
-            if (password === 'smes1234') {
+            // Check against the configured admin password in .env
+            if (password === import.meta.env.VITE_ADMIN_PASSWORD) {
                 await loginWithSharedAccount();
                 // 不要在這裡 navigate，等待 useEffect 觸發
             } else {
