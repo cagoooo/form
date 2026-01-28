@@ -54,11 +54,11 @@ export const AuthProvider = ({ children }) => {
         return signInWithPopup(auth, provider);
     };
 
-    const loginWithSharedAccount = () => {
+    const loginWithSharedAccount = (password) => {
         return signInWithEmailAndPassword(
             auth,
             import.meta.env.VITE_ADMIN_EMAIL,
-            import.meta.env.VITE_ADMIN_PASSWORD
+            password || import.meta.env.VITE_ADMIN_PASSWORD
         );
     };
 

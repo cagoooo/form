@@ -11,6 +11,10 @@
 - **即時通知**: 支援 Google Chat Webhook 通知。
 - **資料匯出**: 支援 CSV 匯出功能。
 
+## 📅 版本紀錄
+- **v1.2.1** (2026-01-28): ✅修復登入密碼驗證錯誤 ✅修正 404 資源遺失問題 ✅強化 API Key 安全性
+- **v1.2.0**: 新增管理員儀表板與權限管理功能。
+
 ## 🛠️ 技術堆疊
 - **Frontend**: React, Vite, Tailwind CSS
 - **Backend**: Firebase (Firestore, Authentication)

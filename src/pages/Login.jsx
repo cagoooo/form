@@ -22,14 +22,9 @@ const Login = () => {
         setError('');
         setLoading(true);
         try {
-            // Check against the configured admin password in .env
-            if (password === import.meta.env.VITE_ADMIN_PASSWORD) {
-                await loginWithSharedAccount();
-                // 不要在這裡 navigate，等待 useEffect 觸發
-            } else {
-                setError('密碼錯誤');
-                setLoading(false);
-            }
+            // Pass the password directly to Firebase Auth
+            await loginWithSharedAccount(password);
+            // 不要在這裡 navigate，等待 useEffect 觸發
         } catch (err) {
             console.error("Login failed:", err);
             setError('登入失敗，請檢查網路或聯絡管理員');
