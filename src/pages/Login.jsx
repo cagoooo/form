@@ -78,6 +78,9 @@ const Login = () => {
 
                     {/* Password Login */}
                     <form onSubmit={handlePasswordLogin} className="space-y-4">
+                        {/* Hidden username for accessibility/autofill */}
+                        <input type="text" name="username" value="admin" readOnly className="hidden" autoComplete="username" />
+
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                             <input
@@ -85,6 +88,7 @@ const Login = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="輸入管理員密碼"
+                                autoComplete="current-password"
                                 className={`input-field pl-10 ${error ? 'ring-2 ring-red-500' : ''}`}
                             />
                         </div>

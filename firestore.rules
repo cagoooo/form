@@ -14,22 +14,31 @@ service cloud.firestore {
          request.auth.token.email == 'admin@form.system');
     }
 
-    // Users collection: Users can read their own profile
+    // Users collection: 
+    // - Users can read/write their own profile
+    // - Admins can read all profiles (for User Management)
+    // - Admins can write all profiles (to promote/demote users)
     match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
-    // Templates: Public read (for rendering forms), Admin write
+    // Templates: 
+    // - Public read (for rendering forms)
+    // - Authenticated users (Editors & Admins) can create/update
+    // - Only Admins (or owners, but simplified to Admins/Editors for now) can delete? 
+    //   Let's allow all authenticated users to manage templates fully as requested.
     match /templates/{templateId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
-    // Submissions: Public create, Admin read/write
+    // Submissions: 
+    // - Public create
+    // - Authenticated users (Editors & Admins) can read/write
     match /submissions/{submissionId} {
       allow create: if true;
-      allow read, update, delete: if isAdmin();
+      allow read, update, delete: if isAuthenticated();
     }
   }
 }

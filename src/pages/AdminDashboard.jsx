@@ -3,9 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, FileSpreadsheet, Users, LogOut, User } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, LogOut, User, Settings, BarChart3 } from 'lucide-react';
+import UserManager from '../components/UserManager';
+import SystemStats from '../components/SystemStats';
 
 const AdminDashboard = () => {
+    const [activeTab, setActiveTab] = useState('forms');
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const { currentUser, userRole, logout } = useAuth();
@@ -68,7 +71,10 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-2 text-slate-500 text-sm">
                                 <User size={14} />
                                 <span>{currentUser?.email}</span>
-                                <span className="bg-slate-200 px-2 py-0.5 rounded-full text-xs font-bold uppercase">{userRole || 'User'}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${userRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'
+                                    }`}>
+                                    {userRole || 'User'}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -84,95 +90,117 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Stats Row (Mockup for visual) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                    <div className="glass-card p-6 flex items-center gap-4">
-                        <div className="p-4 bg-purple-100 text-purple-600 rounded-2xl">
-                            <FileSpreadsheet size={24} />
-                        </div>
-                        <div>
-                            <p className="text-slate-500 text-sm">總表單數</p>
-                            <h3 className="text-2xl font-bold text-slate-800">{templates.length}</h3>
-                        </div>
-                    </div>
-                    <div className="glass-card p-6 flex items-center gap-4">
-                        <div className="p-4 bg-green-100 text-green-600 rounded-2xl">
-                            <Users size={24} />
-                        </div>
-                        <div>
-                            <p className="text-slate-500 text-sm">總回應數</p>
-                            <h3 className="text-2xl font-bold text-slate-800">-</h3>
-                        </div>
-                    </div>
-                    <div className="glass-card p-6 flex items-center gap-4">
-                        <div className="p-4 bg-orange-100 text-orange-600 rounded-2xl">
-                            <Eye size={24} />
-                        </div>
-                        <div>
-                            <p className="text-slate-500 text-sm">今日瀏覽</p>
-                            <h3 className="text-2xl font-bold text-slate-800">-</h3>
-                        </div>
-                    </div>
+                {/* Tabs Navigation */}
+                <div className="flex gap-4 border-b border-white/20 pb-1 overflow-x-auto">
+                    <button
+                        onClick={() => setActiveTab('forms')}
+                        className={`px-6 py-2 rounded-t-xl font-bold transition flex items-center gap-2 ${activeTab === 'forms'
+                                ? 'bg-white/80 text-blue-600 shadow-sm'
+                                : 'text-slate-600 hover:bg-white/40'
+                            }`}
+                    >
+                        <FileText size={18} /> 表單管理
+                    </button>
+
+                    {userRole === 'admin' && (
+                        <>
+                            <button
+                                onClick={() => setActiveTab('users')}
+                                className={`px-6 py-2 rounded-t-xl font-bold transition flex items-center gap-2 ${activeTab === 'users'
+                                        ? 'bg-white/80 text-blue-600 shadow-sm'
+                                        : 'text-slate-600 hover:bg-white/40'
+                                    }`}
+                            >
+                                <Settings size={18} /> 人員管理
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('stats')}
+                                className={`px-6 py-2 rounded-t-xl font-bold transition flex items-center gap-2 ${activeTab === 'stats'
+                                        ? 'bg-white/80 text-blue-600 shadow-sm'
+                                        : 'text-slate-600 hover:bg-white/40'
+                                    }`}
+                            >
+                                <BarChart3 size={18} /> 系統統計
+                            </button>
+                        </>
+                    )}
                 </div>
 
-                {/* Templates Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                    {templates.map((template, index) => (
-                        <div key={template.id} className="glass-card group hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
-                            <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' :
-                                    template.theme === 'pink' ? 'from-rose-400 to-pink-600' :
-                                        'from-blue-400 to-indigo-600'
-                                } p-6 relative`}>
-                                <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm p-2 rounded-lg text-white">
-                                    <FileText size={20} />
-                                </div>
-                                <h3 className="text-white text-xl font-bold mt-8 truncate shadow-black/10 drop-shadow-md">{template.title}</h3>
-                            </div>
+                {/* Tab Content */}
+                <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
 
-                            <div className="p-6 flex-1 flex flex-col">
-                                <p className="text-slate-500 text-sm mb-6 line-clamp-2 flex-1">{template.description || '無描述'}</p>
-
-                                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                    <div className="flex gap-2">
-                                        <Link to={`/admin/editor/${template.id}`} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="編輯">
-                                            <Edit size={18} />
-                                        </Link>
-                                        <Link to={`/form/${template.id}`} target="_blank" className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="預覽">
-                                            <Eye size={18} />
-                                        </Link>
-                                        <button onClick={() => handleDelete(template.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="刪除">
-                                            <Trash2 size={18} />
-                                        </button>
+                    {/* Forms Tab */}
+                    {activeTab === 'forms' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {templates.map((template) => (
+                                <div key={template.id} className="glass-card group hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
+                                    <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' :
+                                            template.theme === 'pink' ? 'from-rose-400 to-pink-600' :
+                                                'from-blue-400 to-indigo-600'
+                                        } p-6 relative`}>
+                                        <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm p-2 rounded-lg text-white">
+                                            <FileText size={20} />
+                                        </div>
+                                        <h3 className="text-white text-xl font-bold mt-8 truncate shadow-black/10 drop-shadow-md">{template.title}</h3>
                                     </div>
-                                    <Link to={`/admin/submissions/${template.id}`} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition flex items-center gap-2">
-                                        查看回應
-                                        <ArrowRight size={14} />
+
+                                    <div className="p-6 flex-1 flex flex-col">
+                                        <p className="text-slate-500 text-sm mb-6 line-clamp-2 flex-1">{template.description || '無描述'}</p>
+
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                            <div className="flex gap-2">
+                                                <Link to={`/admin/editor/${template.id}`} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="編輯">
+                                                    <Edit size={18} />
+                                                </Link>
+                                                <Link to={`/form/${template.id}`} target="_blank" className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="預覽">
+                                                    <Eye size={18} />
+                                                </Link>
+                                                <button onClick={() => handleDelete(template.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="刪除">
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                            <Link to={`/admin/submissions/${template.id}`} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition flex items-center gap-2">
+                                                查看回應
+                                                <ArrowRight size={14} />
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {templates.length === 0 && (
+                                <div className="col-span-full py-20 text-center">
+                                    <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <FileText size={40} className="text-slate-300" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-600">尚無表單</h3>
+                                    <p className="text-slate-400 mb-6">開始建立您的第一個動態表單吧！</p>
+                                    <Link to="/admin/editor/new" className="btn-primary inline-flex items-center gap-2">
+                                        <Plus size={20} />
+                                        立即建立
                                     </Link>
                                 </div>
-                            </div>
-                        </div>
-                    ))}
-
-                    {templates.length === 0 && (
-                        <div className="col-span-full py-20 text-center">
-                            <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <FileText size={40} className="text-slate-300" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-600">尚無表單</h3>
-                            <p className="text-slate-400 mb-6">開始建立您的第一個動態表單吧！</p>
-                            <Link to="/admin/editor/new" className="btn-primary inline-flex items-center gap-2">
-                                <Plus size={20} />
-                                立即建立
-                            </Link>
+                            )}
                         </div>
                     )}
+
+                    {/* User Management Tab */}
+                    {activeTab === 'users' && userRole === 'admin' && (
+                        <UserManager />
+                    )}
+
+                    {/* Statistics Tab */}
+                    {activeTab === 'stats' && userRole === 'admin' && (
+                        <SystemStats />
+                    )}
+
                 </div>
             </div>
         </div>
     );
 };
 
-// Helper component for ArrowRight since it wasn't imported
+// Helper component for ArrowRight
 const ArrowRight = ({ size }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
 );
