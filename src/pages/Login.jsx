@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, ArrowRight, ShieldCheck, LogIn } from 'lucide-react';
@@ -7,8 +7,15 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { loginWithSharedAccount, loginWithGoogle } = useAuth();
+    const { loginWithSharedAccount, loginWithGoogle, currentUser } = useAuth();
     const navigate = useNavigate();
+
+    // 監聽 currentUser 變化，一旦登入成功（Context 更新完成）自動跳轉
+    useEffect(() => {
+        if (currentUser) {
+            navigate('/admin/dashboard');
+        }
+    }, [currentUser, navigate]);
 
     const handlePasswordLogin = async (e) => {
         e.preventDefault();
@@ -17,14 +24,14 @@ const Login = () => {
         try {
             if (password === 'smes1234') {
                 await loginWithSharedAccount();
-                navigate('/admin/dashboard');
+                // 不要在這裡 navigate，等待 useEffect 觸發
             } else {
                 setError('密碼錯誤');
+                setLoading(false);
             }
         } catch (err) {
             console.error("Login failed:", err);
             setError('登入失敗，請檢查網路或聯絡管理員');
-        } finally {
             setLoading(false);
         }
     };
@@ -34,11 +41,10 @@ const Login = () => {
         setLoading(true);
         try {
             await loginWithGoogle();
-            navigate('/admin/dashboard');
+            // 不要在這裡 navigate，等待 useEffect 觸發
         } catch (err) {
             console.error("Google Login failed:", err);
             setError('Google 登入失敗');
-        } finally {
             setLoading(false);
         }
     };
