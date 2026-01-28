@@ -91,12 +91,12 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="flex gap-4 border-b border-white/20 pb-1 overflow-x-auto">
+                <div className="bg-white/30 backdrop-blur-md rounded-xl p-1.5 flex gap-2 overflow-x-auto shadow-sm border border-white/20">
                     <button
                         onClick={() => setActiveTab('forms')}
-                        className={`px-6 py-2 rounded-t-xl font-bold transition flex items-center gap-2 ${activeTab === 'forms'
-                                ? 'bg-white/80 text-blue-600 shadow-sm'
-                                : 'text-slate-600 hover:bg-white/40'
+                        className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'forms'
+                            ? 'bg-white text-blue-600 shadow-sm shadow-blue-100'
+                            : 'text-slate-600 hover:bg-white/40'
                             }`}
                     >
                         <FileText size={18} /> 表單管理
@@ -106,18 +106,18 @@ const AdminDashboard = () => {
                         <>
                             <button
                                 onClick={() => setActiveTab('users')}
-                                className={`px-6 py-2 rounded-t-xl font-bold transition flex items-center gap-2 ${activeTab === 'users'
-                                        ? 'bg-white/80 text-blue-600 shadow-sm'
-                                        : 'text-slate-600 hover:bg-white/40'
+                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'users'
+                                    ? 'bg-white text-blue-600 shadow-sm shadow-blue-100'
+                                    : 'text-slate-600 hover:bg-white/40'
                                     }`}
                             >
                                 <Settings size={18} /> 人員管理
                             </button>
                             <button
                                 onClick={() => setActiveTab('stats')}
-                                className={`px-6 py-2 rounded-t-xl font-bold transition flex items-center gap-2 ${activeTab === 'stats'
-                                        ? 'bg-white/80 text-blue-600 shadow-sm'
-                                        : 'text-slate-600 hover:bg-white/40'
+                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'stats'
+                                    ? 'bg-white text-blue-600 shadow-sm shadow-blue-100'
+                                    : 'text-slate-600 hover:bg-white/40'
                                     }`}
                             >
                                 <BarChart3 size={18} /> 系統統計
@@ -135,8 +135,8 @@ const AdminDashboard = () => {
                             {templates.map((template) => (
                                 <div key={template.id} className="glass-card group hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
                                     <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' :
-                                            template.theme === 'pink' ? 'from-rose-400 to-pink-600' :
-                                                'from-blue-400 to-indigo-600'
+                                        template.theme === 'pink' ? 'from-rose-400 to-pink-600' :
+                                            'from-blue-400 to-indigo-600'
                                         } p-6 relative`}>
                                         <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm p-2 rounded-lg text-white">
                                             <FileText size={20} />
