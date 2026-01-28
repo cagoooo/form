@@ -1,46 +1,66 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const Login = () => {
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
+    const [error, setError] = useState(false);
 
     const handleLogin = (e) => {
         e.preventDefault();
-        // Simple hardcoded password for now, as requested in previous conversations or standard simple auth
-        // User didn't specify a password, so I'll use a default 'admin' or 'smes1234' (from history)
-        // History mentions 'smes1234' for admin route.
         if (password === 'smes1234') {
             localStorage.setItem('isAdmin', 'true');
             navigate('/admin/dashboard');
         } else {
-            alert('密碼錯誤');
+            setError(true);
+            setTimeout(() => setError(false), 500); // Shake animation reset
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Lock className="w-8 h-8 text-blue-600" />
+        <div className="min-h-screen flex items-center justify-center p-4 mesh-bg relative overflow-hidden">
+            {/* Decorative Blobs */}
+            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float"></div>
+            <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDelay: '4s' }}></div>
+
+            <div className="glass-card w-full max-w-md p-8 relative z-10 animate-slide-up">
+                <div className="text-center mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-tr from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30 transform rotate-3 hover:rotate-6 transition-transform duration-300">
+                        <ShieldCheck className="w-10 h-10 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-slate-800 mb-2">歡迎回來</h1>
+                    <p className="text-slate-500">請輸入管理員密碼以繼續</p>
                 </div>
-                <h1 className="text-2xl font-bold text-center text-slate-800 mb-6">管理員登入</h1>
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
+
+                <form onSubmit={handleLogin} className="space-y-6">
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="請輸入密碼"
-                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="輸入密碼"
+                            className={`input-field pl-10 ${error ? 'ring-2 ring-red-500 animate-pulse' : ''}`}
                             autoFocus
                         />
                     </div>
-                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-                        登入
+
+                    <button
+                        type="submit"
+                        className="w-full btn-primary flex items-center justify-center gap-2 group"
+                    >
+                        登入系統
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
                 </form>
+
+                <div className="mt-8 text-center">
+                    <p className="text-xs text-slate-400">
+                        Protected by Secure Auth System
+                    </p>
+                </div>
             </div>
         </div>
     );

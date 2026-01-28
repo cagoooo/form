@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import PublicForm from './pages/PublicForm';
 import AdminDashboard from './pages/AdminDashboard';
 import TemplateEditor from './pages/TemplateEditor';
@@ -16,7 +16,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
     return (
-        <BrowserRouter>
+        <HashRouter>
             <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Navigate to="/admin" replace />} />
@@ -42,7 +42,7 @@ function App() {
                     </ProtectedRoute>
                 } />
             </Routes>
-        </BrowserRouter>
+        </HashRouter>
     );
 }
 

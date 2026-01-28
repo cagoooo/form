@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Plus, Edit, Trash2, Eye, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, FileSpreadsheet, Users } from 'lucide-react';
 
 const AdminDashboard = () => {
     const [templates, setTemplates] = useState([]);
@@ -36,42 +36,95 @@ const AdminDashboard = () => {
         }
     };
 
-    if (loading) return <div className="p-10 text-center">載入中...</div>;
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center mesh-bg">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
-            <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold text-slate-800">表單管理後台</h1>
-                    <Link to="/admin/editor/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
+        <div className="min-h-screen mesh-bg p-6">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header */}
+                <div className="glass-card p-6 flex flex-col md:flex-row justify-between items-center gap-4 animate-slide-up">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-100 rounded-2xl text-blue-600">
+                            <LayoutDashboard size={28} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-800">管理儀表板</h1>
+                            <p className="text-slate-500">歡迎回來，管理員</p>
+                        </div>
+                    </div>
+                    <Link to="/admin/editor/new" className="btn-primary flex items-center gap-2">
                         <Plus size={20} />
                         建立新表單
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {templates.map(template => (
-                        <div key={template.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
-                            <div className={`h-2 bg-gradient-to-r ${template.theme === 'green' ? 'from-emerald-500 to-teal-500' : template.theme === 'pink' ? 'from-pink-500 to-rose-500' : 'from-blue-500 to-indigo-500'}`}></div>
-                            <div className="p-5">
-                                <h3 className="text-xl font-bold text-slate-800 mb-2 truncate">{template.title}</h3>
-                                <p className="text-slate-500 text-sm mb-4 line-clamp-2 h-10">{template.description || '無描述'}</p>
+                {/* Stats Row (Mockup for visual) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                    <div className="glass-card p-6 flex items-center gap-4">
+                        <div className="p-4 bg-purple-100 text-purple-600 rounded-2xl">
+                            <FileSpreadsheet size={24} />
+                        </div>
+                        <div>
+                            <p className="text-slate-500 text-sm">總表單數</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{templates.length}</h3>
+                        </div>
+                    </div>
+                    <div className="glass-card p-6 flex items-center gap-4">
+                        <div className="p-4 bg-green-100 text-green-600 rounded-2xl">
+                            <Users size={24} />
+                        </div>
+                        <div>
+                            <p className="text-slate-500 text-sm">總回應數</p>
+                            <h3 className="text-2xl font-bold text-slate-800">-</h3>
+                        </div>
+                    </div>
+                    <div className="glass-card p-6 flex items-center gap-4">
+                        <div className="p-4 bg-orange-100 text-orange-600 rounded-2xl">
+                            <Eye size={24} />
+                        </div>
+                        <div>
+                            <p className="text-slate-500 text-sm">今日瀏覽</p>
+                            <h3 className="text-2xl font-bold text-slate-800">-</h3>
+                        </div>
+                    </div>
+                </div>
 
-                                <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                {/* Templates Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                    {templates.map((template, index) => (
+                        <div key={template.id} className="glass-card group hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
+                            <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' :
+                                    template.theme === 'pink' ? 'from-rose-400 to-pink-600' :
+                                        'from-blue-400 to-indigo-600'
+                                } p-6 relative`}>
+                                <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm p-2 rounded-lg text-white">
+                                    <FileText size={20} />
+                                </div>
+                                <h3 className="text-white text-xl font-bold mt-8 truncate shadow-black/10 drop-shadow-md">{template.title}</h3>
+                            </div>
+
+                            <div className="p-6 flex-1 flex flex-col">
+                                <p className="text-slate-500 text-sm mb-6 line-clamp-2 flex-1">{template.description || '無描述'}</p>
+
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                                     <div className="flex gap-2">
-                                        <Link to={`/admin/editor/${template.id}`} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg" title="編輯">
+                                        <Link to={`/admin/editor/${template.id}`} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="編輯">
                                             <Edit size={18} />
                                         </Link>
-                                        <Link to={`/form/${template.id}`} target="_blank" className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg" title="預覽">
+                                        <Link to={`/form/${template.id}`} target="_blank" className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="預覽">
                                             <Eye size={18} />
                                         </Link>
-                                        <button onClick={() => handleDelete(template.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="刪除">
+                                        <button onClick={() => handleDelete(template.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="刪除">
                                             <Trash2 size={18} />
                                         </button>
                                     </div>
-                                    <Link to={`/admin/submissions/${template.id}`} className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1">
-                                        <FileText size={16} />
+                                    <Link to={`/admin/submissions/${template.id}`} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition flex items-center gap-2">
                                         查看回應
+                                        <ArrowRight size={14} />
                                     </Link>
                                 </div>
                             </div>
@@ -79,8 +132,16 @@ const AdminDashboard = () => {
                     ))}
 
                     {templates.length === 0 && (
-                        <div className="col-span-full text-center py-20 text-slate-400">
-                            目前沒有任何表單，請點擊右上角建立。
+                        <div className="col-span-full py-20 text-center">
+                            <div className="w-24 h-24 bg-white/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <FileText size={40} className="text-slate-300" />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-600">尚無表單</h3>
+                            <p className="text-slate-400 mb-6">開始建立您的第一個動態表單吧！</p>
+                            <Link to="/admin/editor/new" className="btn-primary inline-flex items-center gap-2">
+                                <Plus size={20} />
+                                立即建立
+                            </Link>
                         </div>
                     )}
                 </div>
@@ -88,5 +149,10 @@ const AdminDashboard = () => {
         </div>
     );
 };
+
+// Helper component for ArrowRight since it wasn't imported
+const ArrowRight = ({ size }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+);
 
 export default AdminDashboard;
