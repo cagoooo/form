@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, FileSpreadsheet, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, FileSpreadsheet, Users, LogOut, User } from 'lucide-react';
 
 const AdminDashboard = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { currentUser, userRole, logout } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchTemplates();
@@ -21,6 +24,15 @@ const AdminDashboard = () => {
             console.error("Error fetching templates:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/admin/login');
+        } catch (error) {
+            console.error("Logout failed", error);
         }
     };
 
@@ -53,13 +65,23 @@ const AdminDashboard = () => {
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-slate-800">管理儀表板</h1>
-                            <p className="text-slate-500">歡迎回來，管理員</p>
+                            <div className="flex items-center gap-2 text-slate-500 text-sm">
+                                <User size={14} />
+                                <span>{currentUser?.email}</span>
+                                <span className="bg-slate-200 px-2 py-0.5 rounded-full text-xs font-bold uppercase">{userRole || 'User'}</span>
+                            </div>
                         </div>
                     </div>
-                    <Link to="/admin/editor/new" className="btn-primary flex items-center gap-2">
-                        <Plus size={20} />
-                        建立新表單
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleLogout} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg flex items-center gap-2 transition">
+                            <LogOut size={18} />
+                            登出
+                        </button>
+                        <Link to="/admin/editor/new" className="btn-primary flex items-center gap-2">
+                            <Plus size={20} />
+                            建立新表單
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Stats Row (Mockup for visual) */}
