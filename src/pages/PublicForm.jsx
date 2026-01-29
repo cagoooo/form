@@ -3,6 +3,9 @@ import { useParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import FormRenderer from '../components/FormRenderer';
+import DraftRestoreDialog from '../components/DraftRestoreDialog';
+import AutoSaveIndicator from '../components/AutoSaveIndicator';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { CheckCircle, AlertCircle, FileText } from 'lucide-react';
 
 const PublicForm = () => {
@@ -11,6 +14,13 @@ const PublicForm = () => {
     const [loading, setLoading] = useState(true);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState(null);
+    const [formData, setFormData] = useState({});
+    const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+    const [draftData, setDraftData] = useState(null);
+    const [lastSavedTime, setLastSavedTime] = useState(null);
+
+    // 自動儲存 Hook
+    const { saveToLocal, loadDraft, clearDraft } = useAutoSave(templateId, formData);
 
     // Mock template for development/testing
     const mockTemplate = {
@@ -49,6 +59,20 @@ const PublicForm = () => {
             setTemplate(mockTemplate);
             setLoading(false);
         }
+
+        // 檢查是否有草稿
+        const draft = loadDraft();
+        if (draft && draft.timestamp) {
+            const timeDiff = Date.now() - draft.timestamp;
+            // 只在 24 小時內的草稿才提示復原
+            if (timeDiff < 24 * 60 * 60 * 1000) {
+                setShowRestoreDialog(true);
+                setDraftData(draft);
+            } else {
+                // 清除過期草稿
+                clearDraft();
+            }
+        }
     }, [templateId]);
 
     const fetchTemplate = async () => {
@@ -68,20 +92,23 @@ const PublicForm = () => {
         }
     };
 
-    const handleSubmit = async (formData) => {
+    const handleSubmit = async (submittedData) => {
         try {
             // 1. Save to Firestore
             await addDoc(collection(db, 'submissions'), {
                 templateId: templateId || 'mock-id',
-                data: formData,
+                data: submittedData,
                 timestamp: serverTimestamp(),
-                className: formData['f1'] || 'Unknown' // Assuming f1 is class name for now, logic can be improved
+                className: submittedData['f1'] || 'Unknown' // Assuming f1 is class name for now, logic can be improved
             });
 
             // 2. Send to Google Chat Webhook (Client-side)
             if (template.webhookUrl) {
-                await sendWebhook(formData);
+                await sendWebhook(submittedData);
             }
+
+            // 3. 清除草稿
+            clearDraft();
 
             setSubmitted(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -178,10 +205,39 @@ const PublicForm = () => {
                     </div>
                 </div>
 
+                {/* Auto-save Indicator */}
+                {lastSavedTime && (
+                    <div className="flex justify-end">
+                        <AutoSaveIndicator lastSaved={lastSavedTime} />
+                    </div>
+                )}
+
                 {/* Form Content */}
                 <div className="glass-card p-8">
-                    <FormRenderer template={template} onSubmit={handleSubmit} />
+                    <FormRenderer
+                        template={template}
+                        onSubmit={handleSubmit}
+                        initialData={formData}
+                        onDataChange={(data) => {
+                            setFormData(data);
+                            setLastSavedTime(Date.now());
+                        }}
+                    />
                 </div>
+
+                {/* Draft Restore Dialog */}
+                <DraftRestoreDialog
+                    show={showRestoreDialog}
+                    timestamp={draftData?.timestamp}
+                    onRestore={() => {
+                        setFormData(draftData.data);
+                        setShowRestoreDialog(false);
+                    }}
+                    onDiscard={() => {
+                        clearDraft();
+                        setShowRestoreDialog(false);
+                    }}
+                />
 
                 {/* Footer */}
                 <div className="text-center text-slate-500 text-sm">

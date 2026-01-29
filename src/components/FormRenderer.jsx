@@ -1,14 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, AlertCircle, CheckCircle2 } from 'lucide-react';
+import RadioGroup from './fields/RadioGroup';
+import CheckboxGroup from './fields/CheckboxGroup';
+import SelectInput from './fields/SelectInput';
+import DateInput from './fields/DateInput';
+import NumberInput from './fields/NumberInput';
+import RatingInput from './fields/RatingInput';
+import StepIndicator from './StepIndicator';
+import StepNavigation from './StepNavigation';
 
-const FormRenderer = ({ template, onSubmit, isSubmitting }) => {
-    const [formData, setFormData] = useState({});
+const FormRenderer = ({ template, onSubmit, isSubmitting, initialData = {}, onDataChange }) => {
+    const [formData, setFormData] = useState(initialData);
     const [errors, setErrors] = useState({});
+    const [currentStep, setCurrentStep] = useState(0);
+
+    const isMultiStep = template.settings?.isMultiStep;
+    const sections = template.sections || [];
+    const currentSection = isMultiStep ? sections[currentStep] : null;
 
     if (!template) return <div className="text-center p-10">載入中...</div>;
 
+    // 當 initialData 變更時同步到 formData
+    useEffect(() => {
+        if (initialData && Object.keys(initialData).length > 0) {
+            setFormData(initialData);
+        }
+    }, [initialData]);
+
     const handleChange = (fieldId, value) => {
-        setFormData(prev => ({ ...prev, [fieldId]: value }));
+        const newData = { ...formData, [fieldId]: value };
+        setFormData(newData);
+
+        // 通知父組件資料更新
+        if (onDataChange) {
+            onDataChange(newData);
+        }
+
         if (errors[fieldId]) {
             setErrors(prev => {
                 const newErrors = { ...prev };
@@ -18,17 +45,50 @@ const FormRenderer = ({ template, onSubmit, isSubmitting }) => {
         }
     };
 
+    const validateStep = (stepIndex) => {
+        const newErrors = {};
+        const section = sections[stepIndex];
+        if (!section) return true;
+
+        section.fields.forEach(field => {
+            if (field.required) {
+                const val = formData[field.id];
+                if (val === undefined || val === null || (typeof val === 'string' && !val.trim()) || (Array.isArray(val) && val.length === 0)) {
+                    newErrors[field.id] = '此欄位必填';
+                }
+            }
+        });
+
+        setErrors(prev => ({ ...prev, ...newErrors }));
+        return Object.keys(newErrors).length === 0;
+    };
+
     const validate = () => {
         const newErrors = {};
-        template.sections.forEach(section => {
+        sections.forEach(section => {
             section.fields.forEach(field => {
-                if (field.required && !formData[field.id]?.trim()) {
-                    newErrors[field.id] = '此欄位必填';
+                if (field.required) {
+                    const val = formData[field.id];
+                    if (val === undefined || val === null || (typeof val === 'string' && !val.trim()) || (Array.isArray(val) && val.length === 0)) {
+                        newErrors[field.id] = '此欄位必填';
+                    }
                 }
             });
         });
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+
+    const handleNext = () => {
+        if (validateStep(currentStep)) {
+            setCurrentStep(prev => prev + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
+    const handleBack = () => {
+        setCurrentStep(prev => prev - 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleSubmit = (e) => {
@@ -74,6 +134,44 @@ const FormRenderer = ({ template, onSubmit, isSubmitting }) => {
 
     const theme = themeColors[template.theme || 'blue'];
 
+    const renderField = (field, formData, handleChange, errors, theme) => {
+        if (field.type === 'textarea') {
+            return (
+                <textarea
+                    value={formData[field.id] || ''}
+                    onChange={(e) => handleChange(field.id, e.target.value)}
+                    placeholder={field.placeholder}
+                    className={`w-full p-3 border rounded-lg outline-none transition shadow-sm bg-white ${errors[field.id] ? 'border-red-500 focus:ring-red-500' : `border-slate-200 ${theme.inputRing} focus:ring-2`
+                        }`}
+                    rows={3}
+                />
+            );
+        } else if (field.type === 'radio') {
+            return <RadioGroup field={field} value={formData[field.id]} onChange={handleChange} theme={theme} />;
+        } else if (field.type === 'checkbox') {
+            return <CheckboxGroup field={field} value={formData[field.id]} onChange={handleChange} theme={theme} />;
+        } else if (field.type === 'select') {
+            return <SelectInput field={field} value={formData[field.id]} onChange={handleChange} theme={theme} />;
+        } else if (field.type === 'date') {
+            return <DateInput field={field} value={formData[field.id]} onChange={handleChange} theme={theme} />;
+        } else if (field.type === 'number') {
+            return <NumberInput field={field} value={formData[field.id]} onChange={handleChange} theme={theme} />;
+        } else if (field.type === 'rating') {
+            return <RatingInput field={field} value={formData[field.id]} onChange={handleChange} theme={theme} />;
+        } else {
+            return (
+                <input
+                    type={field.type || 'text'}
+                    value={formData[field.id] || ''}
+                    onChange={(e) => handleChange(field.id, e.target.value)}
+                    placeholder={field.placeholder}
+                    className={`w-full p-3 border rounded-lg outline-none transition shadow-sm bg-white ${errors[field.id] ? 'border-red-500 focus:ring-red-500' : `border-slate-200 ${theme.inputRing} focus:ring-2`
+                        }`}
+                />
+            );
+        }
+    };
+
     return (
         <div className="w-full max-w-3xl mx-auto p-2 sm:p-4">
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
@@ -89,69 +187,87 @@ const FormRenderer = ({ template, onSubmit, isSubmitting }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-8">
-                    {template.sections.map((section) => (
-                        <div key={section.id} className={`${theme.bg} rounded-xl border ${theme.border} p-5`}>
+                    {isMultiStep && template.settings?.showProgress && (
+                        <StepIndicator
+                            steps={sections}
+                            currentStep={currentStep}
+                            theme={theme}
+                        />
+                    )}
+
+                    {isMultiStep ? (
+                        /* Multi-step Section Rendering */
+                        <div key={currentSection.id} className={`${theme.bg} rounded-xl border ${theme.border} p-5 animate-fade-in`}>
                             <div className="mb-4 border-b border-black/5 pb-2">
-                                <h2 className={`text-lg font-bold ${theme.text}`}>{section.title}</h2>
-                                {section.description && <p className={`text-xs ${theme.subtext}`}>{section.description}</p>}
+                                <h2 className={`text-lg font-bold ${theme.text}`}>{currentSection.title}</h2>
+                                {currentSection.description && <p className={`text-xs ${theme.subtext}`}>{currentSection.description}</p>}
                             </div>
 
                             <div className="grid grid-cols-1 gap-4">
-                                {section.fields.map((field) => (
+                                {currentSection.fields.map((field) => (
                                     <div key={field.id} className={`space-y-1 ${errors[field.id] ? 'error-field' : ''}`}>
                                         <label className={`block text-sm font-semibold ${theme.text} ml-1`}>
                                             {field.label} {field.required && <span className="text-red-500">*</span>}
                                         </label>
-
-                                        {field.type === 'textarea' ? (
-                                            <textarea
-                                                value={formData[field.id] || ''}
-                                                onChange={(e) => handleChange(field.id, e.target.value)}
-                                                placeholder={field.placeholder}
-                                                className={`w-full p-3 border rounded-lg outline-none transition shadow-sm bg-white ${errors[field.id] ? 'border-red-500 focus:ring-red-500' : `border-slate-200 ${theme.inputRing} focus:ring-2`
-                                                    }`}
-                                                rows={3}
-                                            />
-                                        ) : (
-                                            <input
-                                                type={field.type || 'text'}
-                                                value={formData[field.id] || ''}
-                                                onChange={(e) => handleChange(field.id, e.target.value)}
-                                                placeholder={field.placeholder}
-                                                className={`w-full p-3 border rounded-lg outline-none transition shadow-sm bg-white ${errors[field.id] ? 'border-red-500 focus:ring-red-500' : `border-slate-200 ${theme.inputRing} focus:ring-2`
-                                                    }`}
-                                            />
-                                        )}
-                                        {errors[field.id] && (
-                                            <p className="text-red-500 text-xs flex items-center mt-1">
-                                                <AlertCircle className="w-3 h-3 mr-1" /> {errors[field.id]}
-                                            </p>
-                                        )}
+                                        {/* Field rendering logic remains the same */}
+                                        {renderField(field, formData, handleChange, errors, theme)}
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    ))}
+                    ) : (
+                        /* Standard Single-page Rendering */
+                        sections.map((section) => (
+                            <div key={section.id} className={`${theme.bg} rounded-xl border ${theme.border} p-5`}>
+                                <div className="mb-4 border-b border-black/5 pb-2">
+                                    <h2 className={`text-lg font-bold ${theme.text}`}>{section.title}</h2>
+                                    {section.description && <p className={`text-xs ${theme.subtext}`}>{section.description}</p>}
+                                </div>
 
-                    <div className="pt-4">
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className={`w-full ${theme.button} text-white font-bold py-3.5 px-6 rounded-lg active:scale-[0.98] transition-all duration-200 shadow-lg flex justify-center items-center gap-2 text-lg disabled:opacity-70 disabled:cursor-not-allowed`}
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                    處理中...
-                                </>
-                            ) : (
-                                <>
-                                    <span>確認送出</span>
-                                    <Send className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
-                    </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {section.fields.map((field) => (
+                                        <div key={field.id} className={`space-y-1 ${errors[field.id] ? 'error-field' : ''}`}>
+                                            <label className={`block text-sm font-semibold ${theme.text} ml-1`}>
+                                                {field.label} {field.required && <span className="text-red-500">*</span>}
+                                            </label>
+                                            {renderField(field, formData, handleChange, errors, theme)}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
+
+                    {isMultiStep ? (
+                        <StepNavigation
+                            currentStep={currentStep}
+                            totalSteps={sections.length}
+                            onBack={handleBack}
+                            onNext={handleNext}
+                            isSubmitting={isSubmitting}
+                            theme={theme}
+                        />
+                    ) : (
+                        <div className="pt-4">
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className={`w-full ${theme.button} text-white font-bold py-3.5 px-6 rounded-lg active:scale-[0.98] transition-all duration-200 shadow-lg flex justify-center items-center gap-2 text-lg disabled:opacity-70 disabled:cursor-not-allowed`}
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        處理中...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>確認送出</span>
+                                        <Send className="w-5 h-5" />
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>

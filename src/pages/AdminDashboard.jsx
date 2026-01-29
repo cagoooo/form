@@ -3,14 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, LogOut, User, Settings, BarChart3 } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, LogOut, User, Settings, BarChart3, ArrowRight } from 'lucide-react';
 import UserManager from '../components/UserManager';
 import SystemStats from '../components/SystemStats';
+import ConfirmModal from '../components/ConfirmModal';
 
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('forms');
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, templateId: null, createdBy: null });
     const { currentUser, userRole, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -39,7 +41,10 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleDelete = async (id, createdBy) => {
+    const handleDeleteClick = (e, id, createdBy) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         // Permission check
         if (userRole !== 'admin') {
             if (createdBy !== currentUser.uid) {
@@ -48,22 +53,34 @@ const AdminDashboard = () => {
             }
         }
 
-        if (window.confirm('確定要刪除此模板嗎？此動作無法復原。')) {
-            try {
-                await deleteDoc(doc(db, 'templates', id));
-                setTemplates(prev => prev.filter(t => t.id !== id));
-            } catch (error) {
-                console.error("Error deleting template:", error);
-                alert("刪除失敗");
-            }
+        // Open the custom modal
+        setDeleteModal({ isOpen: true, templateId: id, createdBy: createdBy });
+    };
+
+    const handleConfirmDelete = async () => {
+        const { templateId } = deleteModal;
+
+        try {
+            await deleteDoc(doc(db, 'templates', templateId));
+            setTemplates(prev => prev.filter(t => t.id !== templateId));
+            setDeleteModal({ isOpen: false, templateId: null, createdBy: null });
+        } catch (error) {
+            console.error("Error deleting template:", error);
+            alert("刪除失敗: " + error.message);
         }
     };
 
-    if (loading) return (
-        <div className="min-h-screen flex items-center justify-center mesh-bg">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
-        </div>
-    );
+    const handleCancelDelete = () => {
+        setDeleteModal({ isOpen: false, templateId: null, createdBy: null });
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center mesh-bg">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen mesh-bg p-6">
@@ -79,8 +96,7 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-2 text-slate-500 text-sm">
                                 <User size={14} />
                                 <span>{currentUser?.email}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${userRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'
-                                    }`}>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${userRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'}`}>
                                     {userRole || 'User'}
                                 </span>
                             </div>
@@ -102,10 +118,7 @@ const AdminDashboard = () => {
                 <div className="bg-white/30 backdrop-blur-md rounded-xl p-1.5 flex gap-2 overflow-x-auto shadow-sm border border-white/20">
                     <button
                         onClick={() => setActiveTab('forms')}
-                        className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'forms'
-                            ? 'bg-white text-blue-600 shadow-sm shadow-blue-100'
-                            : 'text-slate-600 hover:bg-white/40'
-                            }`}
+                        className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'forms' ? 'bg-white text-blue-600 shadow-sm shadow-blue-100' : 'text-slate-600 hover:bg-white/40'}`}
                     >
                         <FileText size={18} /> 表單管理
                     </button>
@@ -114,19 +127,13 @@ const AdminDashboard = () => {
                         <>
                             <button
                                 onClick={() => setActiveTab('users')}
-                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'users'
-                                    ? 'bg-white text-blue-600 shadow-sm shadow-blue-100'
-                                    : 'text-slate-600 hover:bg-white/40'
-                                    }`}
+                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-blue-600 shadow-sm shadow-blue-100' : 'text-slate-600 hover:bg-white/40'}`}
                             >
                                 <Settings size={18} /> 人員管理
                             </button>
                             <button
                                 onClick={() => setActiveTab('stats')}
-                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'stats'
-                                    ? 'bg-white text-blue-600 shadow-sm shadow-blue-100'
-                                    : 'text-slate-600 hover:bg-white/40'
-                                    }`}
+                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-blue-600 shadow-sm shadow-blue-100' : 'text-slate-600 hover:bg-white/40'}`}
                             >
                                 <BarChart3 size={18} /> 系統統計
                             </button>
@@ -136,16 +143,12 @@ const AdminDashboard = () => {
 
                 {/* Tab Content */}
                 <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-
                     {/* Forms Tab */}
                     {activeTab === 'forms' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {templates.map((template) => (
-                                <div key={template.id} className="glass-card group hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
-                                    <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' :
-                                        template.theme === 'pink' ? 'from-rose-400 to-pink-600' :
-                                            'from-blue-400 to-indigo-600'
-                                        } p-6 relative`}>
+                                <div key={template.id} className="glass-card group hover:-translate-y-1 transition-all duration-300 flex flex-col h-full relative">
+                                    <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' : template.theme === 'pink' ? 'from-rose-400 to-pink-600' : 'from-blue-400 to-indigo-600'} p-6 relative rounded-t-2xl`}>
                                         <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm p-2 rounded-lg text-white">
                                             <FileText size={20} />
                                         </div>
@@ -156,7 +159,7 @@ const AdminDashboard = () => {
                                         <p className="text-slate-500 text-sm mb-6 line-clamp-2 flex-1">{template.description || '無描述'}</p>
 
                                         <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 relative z-10">
                                                 <Link to={`/admin/editor/${template.id}`} className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="編輯">
                                                     <Edit size={18} />
                                                 </Link>
@@ -164,7 +167,12 @@ const AdminDashboard = () => {
                                                     <Eye size={18} />
                                                 </Link>
                                                 {(userRole === 'admin' || template.createdBy === currentUser?.uid) && (
-                                                    <button onClick={() => handleDelete(template.id, template.createdBy)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="刪除">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleDeleteClick(e, template.id, template.createdBy)}
+                                                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                                        title="刪除"
+                                                    >
                                                         <Trash2 size={18} />
                                                     </button>
                                                 )}
@@ -203,16 +211,19 @@ const AdminDashboard = () => {
                     {activeTab === 'stats' && userRole === 'admin' && (
                         <SystemStats />
                     )}
-
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                title="確定要刪除嗎？"
+                message="此動作無法復原，刪除後所有相關資料都將永久消失。"
+                onConfirm={handleConfirmDelete}
+                onCancel={handleCancelDelete}
+            />
         </div>
     );
 };
-
-// Helper component for ArrowRight
-const ArrowRight = ({ size }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-);
 
 export default AdminDashboard;

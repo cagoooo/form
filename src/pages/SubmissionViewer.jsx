@@ -27,8 +27,8 @@ const SubmissionViewer = () => {
             // Fetch Submissions
             const q = query(
                 collection(db, 'submissions'),
-                where('templateId', '==', templateId),
-                orderBy('timestamp', 'desc')
+                where('templateId', '==', templateId)
+                // orderBy('timestamp', 'desc') // Temporarily removed to fix index error
             );
             const querySnapshot = await getDocs(q);
             const list = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

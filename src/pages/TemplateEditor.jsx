@@ -17,7 +17,12 @@ const TemplateEditor = () => {
         description: '',
         theme: 'blue',
         webhookUrl: import.meta.env.VITE_DEFAULT_WEBHOOK_URL,
-        sections: []
+        sections: [],
+        settings: {
+            isMultiStep: false,
+            showProgress: true,
+            allowBack: true
+        }
     });
 
     useEffect(() => {
@@ -32,7 +37,22 @@ const TemplateEditor = () => {
         try {
             const docSnap = await getDoc(doc(db, 'templates', templateId));
             if (docSnap.exists()) {
-                setTemplate(docSnap.data());
+                const data = docSnap.data();
+                // Merge with default settings to prevent undefined values
+                setTemplate({
+                    title: data.title || '未命名表單',
+                    description: data.description || '',
+                    theme: data.theme || 'blue',
+                    webhookUrl: data.webhookUrl || import.meta.env.VITE_DEFAULT_WEBHOOK_URL || '',
+                    sections: data.sections || [],
+                    settings: {
+                        isMultiStep: data.settings?.isMultiStep ?? false,
+                        showProgress: data.settings?.showProgress ?? true,
+                        allowBack: data.settings?.allowBack ?? true
+                    },
+                    createdBy: data.createdBy,
+                    createdAt: data.createdAt
+                });
             }
         } catch (error) {
             console.error("Error:", error);
@@ -225,6 +245,49 @@ const TemplateEditor = () => {
                                         placeholder="https://chat.googleapis.com/..."
                                     />
                                 </div>
+
+                                <div className="pt-4 border-t border-slate-100 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-bold text-slate-700">分頁模式</label>
+                                        <input
+                                            type="checkbox"
+                                            checked={template.settings?.isMultiStep}
+                                            onChange={e => setTemplate({
+                                                ...template,
+                                                settings: { ...template.settings, isMultiStep: e.target.checked }
+                                            })}
+                                            className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    {template.settings?.isMultiStep && (
+                                        <>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm text-slate-600 ml-2">顯示進度條</label>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={template.settings?.showProgress}
+                                                    onChange={e => setTemplate({
+                                                        ...template,
+                                                        settings: { ...template.settings, showProgress: e.target.checked }
+                                                    })}
+                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm text-slate-600 ml-2">允許返回上一步</label>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={template.settings?.allowBack}
+                                                    onChange={e => setTemplate({
+                                                        ...template,
+                                                        settings: { ...template.settings, allowBack: e.target.checked }
+                                                    })}
+                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -283,6 +346,12 @@ const TemplateEditor = () => {
                                                     >
                                                         <option value="text">單行文字</option>
                                                         <option value="textarea">多行文字</option>
+                                                        <option value="radio">單選題</option>
+                                                        <option value="checkbox">多選題</option>
+                                                        <option value="select">下拉選單</option>
+                                                        <option value="date">日期選擇</option>
+                                                        <option value="number">數字輸入</option>
+                                                        <option value="rating">評分欄位</option>
                                                     </select>
                                                 </div>
                                                 <div className="sm:col-span-4">
@@ -295,6 +364,73 @@ const TemplateEditor = () => {
                                                         placeholder="輸入框內的提示..."
                                                     />
                                                 </div>
+
+                                                {/* Conditional Fields based on Type */}
+                                                {(field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') && (
+                                                    <div className="sm:col-span-12 space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                        <label className="text-xs font-bold text-slate-400 uppercase block">選項設定 (每行一個選項)</label>
+                                                        <textarea
+                                                            value={field.options?.map(o => o.label).join('\n') || ''}
+                                                            onChange={e => {
+                                                                const lines = e.target.value.split('\n');
+                                                                const options = lines.map(line => ({ value: line, label: line }));
+                                                                updateField(sIndex, fIndex, 'options', options);
+                                                            }}
+                                                            className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none text-sm min-h-[80px]"
+                                                            placeholder="選項 1&#10;選項 2&#10;選項 3"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {field.type === 'number' && (
+                                                    <div className="sm:col-span-12 grid grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最小值</label>
+                                                            <input type="number" value={field.min || ''} onChange={e => updateField(sIndex, fIndex, 'min', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最大值</label>
+                                                            <input type="number" value={field.max || ''} onChange={e => updateField(sIndex, fIndex, 'max', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">間隔 (Step)</label>
+                                                            <input type="number" value={field.step || 1} onChange={e => updateField(sIndex, fIndex, 'step', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">單位 (Suffix)</label>
+                                                            <input type="text" value={field.suffix || ''} onChange={e => updateField(sIndex, fIndex, 'suffix', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="如: 元" />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {field.type === 'rating' && (
+                                                    <div className="sm:col-span-12 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">評分上限 (1-10)</label>
+                                                            <input type="number" min="1" max="10" value={field.maxRating || 5} onChange={e => updateField(sIndex, fIndex, 'maxRating', parseInt(e.target.value))} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">圖示類型</label>
+                                                            <select value={field.icon || 'star'} onChange={e => updateField(sIndex, fIndex, 'icon', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm">
+                                                                <option value="star">星星 (Star)</option>
+                                                                <option value="heart">愛心 (Heart)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {field.type === 'date' && (
+                                                    <div className="sm:col-span-12 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最小日期</label>
+                                                            <input type="date" value={field.minDate || ''} onChange={e => updateField(sIndex, fIndex, 'minDate', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最大日期</label>
+                                                            <input type="date" value={field.maxDate || ''} onChange={e => updateField(sIndex, fIndex, 'maxDate', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <div className="sm:col-span-12 flex items-center justify-between pt-2">
                                                     <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none hover:text-blue-600 transition">
                                                         <input
