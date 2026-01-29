@@ -1,7 +1,7 @@
 {
   "name": "form-system",
   "private": true,
-  "version": "1.2.3",
+  "version": "1.2.4",
   "type": "module",
   "homepage": "https://cagoooo.github.io/form",
   "scripts": {
@@ -12,6 +12,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "autoprefixer": "^10.4.23",
     "clsx": "^2.1.1",
     "firebase": "^12.8.0",
@@ -20,6 +23,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.13.0",
+    "recharts": "^3.7.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^3.4.1"
   },

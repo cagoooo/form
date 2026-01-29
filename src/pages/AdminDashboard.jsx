@@ -3,16 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, LogOut, User, Settings, BarChart3, ArrowRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, LayoutDashboard, LogOut, User, Users, Settings, BarChart3, ArrowRight } from 'lucide-react';
 import UserManager from '../components/UserManager';
 import SystemStats from '../components/SystemStats';
 import ConfirmModal from '../components/ConfirmModal';
+import { defaultTemplates } from '../data/defaultTemplates';
 
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('forms');
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, templateId: null, createdBy: null });
+    const [templateModalOpen, setTemplateModalOpen] = useState(false);
     const { currentUser, userRole, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -88,17 +90,15 @@ const AdminDashboard = () => {
                 {/* Header */}
                 <div className="glass-card p-6 flex flex-col md:flex-row justify-between items-center gap-4 animate-slide-up">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-100 rounded-2xl text-blue-600">
+                        <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg shadow-blue-500/30 text-white">
                             <LayoutDashboard size={28} />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-800">管理儀表板</h1>
-                            <div className="flex items-center gap-2 text-slate-500 text-sm">
+                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">管理儀表板</h1>
+                            <div className="flex items-center gap-2 text-slate-500 text-sm mt-1">
                                 <User size={14} />
                                 <span>{currentUser?.email}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase ${userRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'}`}>
-                                    {userRole || 'User'}
-                                </span>
+                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full border border-purple-200 uppercase tracking-wider">{userRole}</span>
                             </div>
                         </div>
                     </div>
@@ -107,38 +107,51 @@ const AdminDashboard = () => {
                             <LogOut size={18} />
                             登出
                         </button>
+                        <button onClick={() => setTemplateModalOpen(true)} className="px-4 py-2 bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 rounded-lg flex items-center gap-2 transition font-medium">
+                            <LayoutDashboard size={20} />
+                            從模板建立
+                        </button>
                         <Link to="/admin/editor/new" className="btn-primary flex items-center gap-2">
                             <Plus size={20} />
-                            建立新表單
+                            建立空白表單
                         </Link>
                     </div>
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="bg-white/30 backdrop-blur-md rounded-xl p-1.5 flex gap-2 overflow-x-auto shadow-sm border border-white/20">
+                <div className="glass-card p-2 mb-8 flex gap-2 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('forms')}
-                        className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'forms' ? 'bg-white text-blue-600 shadow-sm shadow-blue-100' : 'text-slate-600 hover:bg-white/40'}`}
+                        className={`flex-1 py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 font-medium ${activeTab === 'forms'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                            : 'text-slate-500 hover:bg-white/50 hover:text-slate-700'
+                            }`}
                     >
-                        <FileText size={18} /> 表單管理
+                        <FileText size={18} />
+                        表單管理
                     </button>
-
                     {userRole === 'admin' && (
-                        <>
-                            <button
-                                onClick={() => setActiveTab('users')}
-                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-blue-600 shadow-sm shadow-blue-100' : 'text-slate-600 hover:bg-white/40'}`}
-                            >
-                                <Settings size={18} /> 人員管理
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('stats')}
-                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all duration-300 flex items-center justify-center gap-2 whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-blue-600 shadow-sm shadow-blue-100' : 'text-slate-600 hover:bg-white/40'}`}
-                            >
-                                <BarChart3 size={18} /> 系統統計
-                            </button>
-                        </>
+                        <button
+                            onClick={() => setActiveTab('users')}
+                            className={`flex-1 py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 font-medium ${activeTab === 'users'
+                                ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/30'
+                                : 'text-slate-500 hover:bg-white/50 hover:text-slate-700'
+                                }`}
+                        >
+                            <Users size={18} />
+                            人員管理
+                        </button>
                     )}
+                    <button
+                        onClick={() => setActiveTab('stats')}
+                        className={`flex-1 py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all duration-300 font-medium ${activeTab === 'stats'
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                            : 'text-slate-500 hover:bg-white/50 hover:text-slate-700'
+                            }`}
+                    >
+                        <BarChart3 size={18} />
+                        系統統計
+                    </button>
                 </div>
 
                 {/* Tab Content */}
@@ -222,6 +235,47 @@ const AdminDashboard = () => {
                 onConfirm={handleConfirmDelete}
                 onCancel={handleCancelDelete}
             />
+
+            {/* Template Selection Modal */}
+            {templateModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col animate-scale-up border border-white/50 ring-1 ring-black/5">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50/80 to-white/80">
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">選擇表單模板</h2>
+                                <p className="text-slate-500 text-sm mt-1">從精選模板快速開始，或建立全新表單</p>
+                            </div>
+                            <button onClick={() => setTemplateModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                                <LogOut size={24} className="rotate-180" />
+                            </button>
+                        </div>
+                        <div className="p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-slate-50/50">
+                            {defaultTemplates.map(template => (
+                                <div key={template.id} className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 overflow-hidden group cursor-pointer hover:-translate-y-2 ring-1 ring-transparent hover:ring-blue-500/20"
+                                    onClick={() => {
+                                        navigate('/admin/editor/new', { state: { templateData: template } });
+                                    }}
+                                >
+                                    <div className={`h-32 bg-gradient-to-br ${template.theme === 'green' ? 'from-emerald-400 to-teal-600' : template.theme === 'pink' ? 'from-rose-400 to-pink-600' : 'from-blue-400 to-indigo-600'} p-6 flex items-center justify-center relative overflow-hidden`}>
+                                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                        <FileText className="text-white w-14 h-14 group-hover:scale-110 transition-transform duration-500 drop-shadow-md" />
+                                    </div>
+                                    <div className="p-6">
+                                        <h3 className="font-bold text-lg text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">{template.title}</h3>
+                                        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">{template.description}</p>
+                                        <div className="mt-6 pt-4 border-t border-slate-50 flex justify-between items-center text-xs font-medium text-slate-400">
+                                            <span className="bg-slate-100 px-2 py-1 rounded-md">{template.sections.length} 個區塊</span>
+                                            <span className="text-blue-500 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
+                                                使用此模板 <ArrowRight size={12} />
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

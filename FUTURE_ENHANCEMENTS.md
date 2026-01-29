@@ -586,6 +586,36 @@ describe('FormRenderer', () => {
 4. ⭐⭐⭐ **分頁式表單** — 長表單必備
 5. ⭐⭐⭐ **數據分析** — 提升管理價值
 6. ⭐⭐ **拖曳編輯器** — 成本較高但直觀
+7. ⭐⭐⭐⭐⭐ **電子簽名** — 同意書系統核心需求
+8. ⭐⭐⭐⭐ **PDF 自動生成** — 正式存檔必備
+9. ⭐⭐⭐ **條件邏輯** — 提升表單動態性
+
+---
+
+## 🚀 2026 新增進階建議
+
+### 11. 電子簽名 (E-Signature) 組件
+#### 設計概念
+- 使用 `react-signature-canvas` 實現手寫簽名。
+- 簽名結果以 Base64 或圖片上傳至 Firebase Storage。
+- 支援行動裝置觸控操作。
+
+### 12. PDF 自動生成 (PDF Generation)
+#### 設計概念
+- 使用 `jspdf` 或 `react-pdf` 在前端生成 PDF。
+- 或是使用 Firebase Functions 搭配 `puppeteer` 在後端生成。
+- 包含浮水印與填寫時間戳記。
+
+### 13. 條件邏輯 (Conditional Logic)
+#### 設計概念
+- 欄位定義新增 `visibilityRule` 屬性。
+- 例如：`{ "field": "q1", "op": "==", "value": "yes" }`。
+- `FormRenderer` 根據規則動態過濾顯示的欄位。
+
+### 14. QR Code 整合
+#### 設計概念
+- 使用 `qrcode.react` 自動生成表單連結 QR Code。
+- 提供「下載 QR Code」功能供管理員列印。
 
 ---
 

@@ -1,16 +1,76 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, addDoc, collection } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Trash2, Save, ArrowLeft, GripVertical, Settings, Layout } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import DraggableSection from '../components/DraggableSection';
+import DraggableField from '../components/DraggableField';
 
 const TemplateEditor = () => {
     const { templateId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (!over) return;
+        if (active.id === over.id) return;
+
+        // 1. 區塊排序
+        const activeSectionIndex = template.sections.findIndex(s => s.id === active.id);
+        const overSectionIndex = template.sections.findIndex(s => s.id === over.id);
+
+        if (activeSectionIndex !== -1 && overSectionIndex !== -1) {
+            setTemplate(prev => {
+                const newSections = arrayMove(prev.sections, activeSectionIndex, overSectionIndex);
+                return { ...prev, sections: newSections };
+            });
+            return;
+        }
+
+        // 2. 欄位排序 (僅限同區塊內)
+        let sourceSectionIndex = -1;
+        let activeFieldIndex = -1;
+        let overFieldIndex = -1;
+
+        // 尋找 active 欄位所在的區塊
+        template.sections.forEach((section, sIndex) => {
+            const fIndex = section.fields.findIndex(f => f.id === active.id);
+            if (fIndex !== -1) {
+                sourceSectionIndex = sIndex;
+                activeFieldIndex = fIndex;
+            }
+        });
+
+        // 如果找不到 active 欄位，直接結束
+        if (sourceSectionIndex === -1) return;
+
+        // 尋找 over 欄位 (必須在同一個區塊)
+        const destSectionIndex = sourceSectionIndex; // 限制在同區塊
+        overFieldIndex = template.sections[destSectionIndex].fields.findIndex(f => f.id === over.id);
+
+        if (activeFieldIndex !== -1 && overFieldIndex !== -1) {
+            setTemplate(prev => {
+                const newSections = [...prev.sections];
+                const newFields = arrayMove(newSections[sourceSectionIndex].fields, activeFieldIndex, overFieldIndex);
+                newSections[sourceSectionIndex] = { ...newSections[sourceSectionIndex], fields: newFields };
+                return { ...prev, sections: newSections };
+            });
+        }
+    };
 
     const [template, setTemplate] = useState({
         title: '未命名表單',
@@ -28,10 +88,28 @@ const TemplateEditor = () => {
     useEffect(() => {
         if (templateId && templateId !== 'new') {
             fetchTemplate();
+        } else if (location.state?.templateData) {
+            // Initialize from template
+            const { title, description, theme, sections } = location.state.templateData;
+            setTemplate(prev => ({
+                ...prev,
+                title: `${title} (副本)`,
+                description,
+                theme,
+                sections: sections.map(s => ({
+                    ...s,
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5), // Regenerate IDs
+                    fields: s.fields.map(f => ({
+                        ...f,
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) // Regenerate IDs
+                    }))
+                }))
+            }));
+            setLoading(false);
         } else {
             setLoading(false);
         }
-    }, [templateId]);
+    }, [templateId, location.state]);
 
     const fetchTemplate = async () => {
         try {
@@ -294,166 +372,178 @@ const TemplateEditor = () => {
 
                     {/* Right Column: Sections & Fields */}
                     <div className="lg:col-span-2 space-y-6">
-                        {template.sections.map((section, sIndex) => (
-                            <div key={section.id} className="glass-card overflow-hidden animate-slide-up" style={{ animationDelay: `${sIndex * 0.1}s` }}>
-                                <div className="bg-slate-50/50 p-4 border-b border-slate-100 flex justify-between items-center">
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <div className="cursor-move p-2 hover:bg-slate-200 rounded-lg text-slate-400">
-                                            <GripVertical size={20} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <input
-                                                type="text"
-                                                value={section.title}
-                                                onChange={e => updateSection(sIndex, 'title', e.target.value)}
-                                                className="bg-transparent font-bold text-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded px-2 py-1 outline-none w-full"
-                                                placeholder="區塊標題"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={section.description}
-                                                onChange={e => updateSection(sIndex, 'description', e.target.value)}
-                                                placeholder="新增區塊說明..."
-                                                className="bg-transparent text-sm text-slate-500 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded px-2 py-0.5 outline-none w-full mt-1"
-                                            />
-                                        </div>
-                                    </div>
-                                    <button onClick={() => removeSection(sIndex)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                                        <Trash2 size={20} />
-                                    </button>
-                                </div>
-
-                                <div className="p-4 space-y-3">
-                                    {section.fields.map((field, fIndex) => (
-                                        <div key={field.id} className="flex items-start gap-3 bg-white border border-slate-100 p-4 rounded-xl shadow-sm hover:shadow-md transition group">
-                                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-12 gap-3">
-                                                <div className="sm:col-span-5">
-                                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">欄位名稱</label>
-                                                    <input
-                                                        type="text"
-                                                        value={field.label}
-                                                        onChange={e => updateField(sIndex, fIndex, 'label', e.target.value)}
-                                                        className="w-full p-2 bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none font-medium"
-                                                        placeholder="例如：姓名"
-                                                    />
-                                                </div>
-                                                <div className="sm:col-span-3">
-                                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">類型</label>
-                                                    <select
-                                                        value={field.type}
-                                                        onChange={e => updateField(sIndex, fIndex, 'type', e.target.value)}
-                                                        className="w-full p-2 bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                                                    >
-                                                        <option value="text">單行文字</option>
-                                                        <option value="textarea">多行文字</option>
-                                                        <option value="radio">單選題</option>
-                                                        <option value="checkbox">多選題</option>
-                                                        <option value="select">下拉選單</option>
-                                                        <option value="date">日期選擇</option>
-                                                        <option value="number">數字輸入</option>
-                                                        <option value="rating">評分欄位</option>
-                                                    </select>
-                                                </div>
-                                                <div className="sm:col-span-4">
-                                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">提示文字</label>
-                                                    <input
-                                                        type="text"
-                                                        value={field.placeholder || ''}
-                                                        onChange={e => updateField(sIndex, fIndex, 'placeholder', e.target.value)}
-                                                        className="w-full p-2 bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
-                                                        placeholder="輸入框內的提示..."
-                                                    />
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={template.sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                                {template.sections.map((section, sIndex) => (
+                                    <DraggableSection key={section.id} id={section.id}>
+                                        {({ handleProps }) => (
+                                            <div className="glass-card overflow-hidden animate-slide-up" style={{ animationDelay: `${sIndex * 0.1}s` }}>
+                                                <div className="bg-slate-50/50 p-4 border-b border-slate-100 flex justify-between items-center">
+                                                    <div className="flex items-center gap-3 flex-1">
+                                                        <div {...handleProps} className="cursor-move p-2 hover:bg-slate-200 rounded-lg text-slate-400">
+                                                            <GripVertical size={20} />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <input
+                                                                type="text"
+                                                                value={section.title}
+                                                                onChange={e => updateSection(sIndex, 'title', e.target.value)}
+                                                                className="bg-transparent font-bold text-lg text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded px-2 py-1 outline-none w-full"
+                                                                placeholder="區塊標題"
+                                                            />
+                                                            <input
+                                                                type="text"
+                                                                value={section.description}
+                                                                onChange={e => updateSection(sIndex, 'description', e.target.value)}
+                                                                placeholder="新增區塊說明..."
+                                                                className="bg-transparent text-sm text-slate-500 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded px-2 py-0.5 outline-none w-full mt-1"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => removeSection(sIndex)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                                        <Trash2 size={20} />
+                                                    </button>
                                                 </div>
 
-                                                {/* Conditional Fields based on Type */}
-                                                {(field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') && (
-                                                    <div className="sm:col-span-12 space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                        <label className="text-xs font-bold text-slate-400 uppercase block">選項設定 (每行一個選項)</label>
-                                                        <textarea
-                                                            value={field.options?.map(o => o.label).join('\n') || ''}
-                                                            onChange={e => {
-                                                                const lines = e.target.value.split('\n');
-                                                                const options = lines.map(line => ({ value: line, label: line }));
-                                                                updateField(sIndex, fIndex, 'options', options);
-                                                            }}
-                                                            className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none text-sm min-h-[80px]"
-                                                            placeholder="選項 1&#10;選項 2&#10;選項 3"
-                                                        />
-                                                    </div>
-                                                )}
+                                                <div className="p-4 space-y-3">
+                                                    <SortableContext items={section.fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                                                        {section.fields.map((field, fIndex) => (
+                                                            <DraggableField key={field.id} id={field.id}>
+                                                                <div className="flex items-start gap-3 bg-white border border-slate-100 p-4 rounded-xl shadow-sm hover:shadow-md transition group">
+                                                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                                                        <div className="sm:col-span-5">
+                                                                            <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">欄位名稱</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={field.label}
+                                                                                onChange={e => updateField(sIndex, fIndex, 'label', e.target.value)}
+                                                                                className="w-full p-2 bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none font-medium"
+                                                                                placeholder="例如：姓名"
+                                                                            />
+                                                                        </div>
+                                                                        <div className="sm:col-span-3">
+                                                                            <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">類型</label>
+                                                                            <select
+                                                                                value={field.type}
+                                                                                onChange={e => updateField(sIndex, fIndex, 'type', e.target.value)}
+                                                                                className="w-full p-2 bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                                                            >
+                                                                                <option value="text">單行文字</option>
+                                                                                <option value="textarea">多行文字</option>
+                                                                                <option value="radio">單選題</option>
+                                                                                <option value="checkbox">多選題</option>
+                                                                                <option value="select">下拉選單</option>
+                                                                                <option value="date">日期選擇</option>
+                                                                                <option value="number">數字輸入</option>
+                                                                                <option value="rating">評分欄位</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div className="sm:col-span-4">
+                                                                            <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">提示文字</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={field.placeholder || ''}
+                                                                                onChange={e => updateField(sIndex, fIndex, 'placeholder', e.target.value)}
+                                                                                className="w-full p-2 bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none"
+                                                                                placeholder="輸入框內的提示..."
+                                                                            />
+                                                                        </div>
 
-                                                {field.type === 'number' && (
-                                                    <div className="sm:col-span-12 grid grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最小值</label>
-                                                            <input type="number" value={field.min || ''} onChange={e => updateField(sIndex, fIndex, 'min', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最大值</label>
-                                                            <input type="number" value={field.max || ''} onChange={e => updateField(sIndex, fIndex, 'max', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">間隔 (Step)</label>
-                                                            <input type="number" value={field.step || 1} onChange={e => updateField(sIndex, fIndex, 'step', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">單位 (Suffix)</label>
-                                                            <input type="text" value={field.suffix || ''} onChange={e => updateField(sIndex, fIndex, 'suffix', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="如: 元" />
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                                        {/* Conditional Fields based on Type */}
+                                                                        {(field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') && (
+                                                                            <div className="sm:col-span-12 space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                                                <label className="text-xs font-bold text-slate-400 uppercase block">選項設定 (每行一個選項)</label>
+                                                                                <textarea
+                                                                                    value={field.options?.map(o => o.label).join('\n') || ''}
+                                                                                    onChange={e => {
+                                                                                        const lines = e.target.value.split('\n');
+                                                                                        const options = lines.map(line => ({ value: line, label: line }));
+                                                                                        updateField(sIndex, fIndex, 'options', options);
+                                                                                    }}
+                                                                                    className="w-full p-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none text-sm min-h-[80px]"
+                                                                                    placeholder="選項 1&#10;選項 2&#10;選項 3"
+                                                                                />
+                                                                            </div>
+                                                                        )}
 
-                                                {field.type === 'rating' && (
-                                                    <div className="sm:col-span-12 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">評分上限 (1-10)</label>
-                                                            <input type="number" min="1" max="10" value={field.maxRating || 5} onChange={e => updateField(sIndex, fIndex, 'maxRating', parseInt(e.target.value))} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">圖示類型</label>
-                                                            <select value={field.icon || 'star'} onChange={e => updateField(sIndex, fIndex, 'icon', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm">
-                                                                <option value="star">星星 (Star)</option>
-                                                                <option value="heart">愛心 (Heart)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                                        {field.type === 'number' && (
+                                                                            <div className="sm:col-span-12 grid grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最小值</label>
+                                                                                    <input type="number" value={field.min || ''} onChange={e => updateField(sIndex, fIndex, 'min', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最大值</label>
+                                                                                    <input type="number" value={field.max || ''} onChange={e => updateField(sIndex, fIndex, 'max', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">間隔 (Step)</label>
+                                                                                    <input type="number" value={field.step || 1} onChange={e => updateField(sIndex, fIndex, 'step', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">單位 (Suffix)</label>
+                                                                                    <input type="text" value={field.suffix || ''} onChange={e => updateField(sIndex, fIndex, 'suffix', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" placeholder="如: 元" />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
 
-                                                {field.type === 'date' && (
-                                                    <div className="sm:col-span-12 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最小日期</label>
-                                                            <input type="date" value={field.minDate || ''} onChange={e => updateField(sIndex, fIndex, 'minDate', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最大日期</label>
-                                                            <input type="date" value={field.maxDate || ''} onChange={e => updateField(sIndex, fIndex, 'maxDate', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <div className="sm:col-span-12 flex items-center justify-between pt-2">
-                                                    <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none hover:text-blue-600 transition">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={field.required ?? false}
-                                                            onChange={e => updateField(sIndex, fIndex, 'required', e.target.checked)}
-                                                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                                                        />
-                                                        設為必填
-                                                    </label>
-                                                    <button onClick={() => removeField(sIndex, fIndex)} className="text-slate-400 hover:text-red-500 text-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                                                        <Trash2 size={14} /> 移除
+                                                                        {field.type === 'rating' && (
+                                                                            <div className="sm:col-span-12 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">評分上限 (1-10)</label>
+                                                                                    <input type="number" min="1" max="10" value={field.maxRating || 5} onChange={e => updateField(sIndex, fIndex, 'maxRating', parseInt(e.target.value))} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">圖示類型</label>
+                                                                                    <select value={field.icon || 'star'} onChange={e => updateField(sIndex, fIndex, 'icon', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm">
+                                                                                        <option value="star">星星 (Star)</option>
+                                                                                        <option value="heart">愛心 (Heart)</option>
+                                                                                    </select>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {field.type === 'date' && (
+                                                                            <div className="sm:col-span-12 grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最小日期</label>
+                                                                                    <input type="date" value={field.minDate || ''} onChange={e => updateField(sIndex, fIndex, 'minDate', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="text-xs font-bold text-slate-400 uppercase block mb-1">最大日期</label>
+                                                                                    <input type="date" value={field.maxDate || ''} onChange={e => updateField(sIndex, fIndex, 'maxDate', e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="sm:col-span-12 flex items-center justify-between pt-2">
+                                                                            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none hover:text-blue-600 transition">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={field.required ?? false}
+                                                                                    onChange={e => updateField(sIndex, fIndex, 'required', e.target.checked)}
+                                                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                                                                />
+                                                                                設為必填
+                                                                            </label>
+                                                                            <button onClick={() => removeField(sIndex, fIndex)} className="text-slate-400 hover:text-red-500 text-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                                                                                <Trash2 size={14} /> 移除
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </DraggableField>
+                                                        ))}
+                                                    </SortableContext>
+                                                    <button onClick={() => addField(sIndex)} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition flex justify-center items-center gap-2 font-bold text-sm">
+                                                        <Plus size={18} /> 新增欄位
                                                     </button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                    <button onClick={() => addField(sIndex)} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition flex justify-center items-center gap-2 font-bold text-sm">
-                                        <Plus size={18} /> 新增欄位
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                                        )}
+                                    </DraggableSection>
+                                ))}
+                            </SortableContext>
+                        </DndContext>
 
                         <button onClick={addSection} className="w-full py-6 glass-card border-2 border-dashed border-white/50 text-slate-600 hover:text-blue-600 hover:border-blue-400 transition flex flex-col justify-center items-center gap-2 font-bold shadow-none hover:shadow-lg group">
                             <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
