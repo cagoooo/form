@@ -2,6 +2,8 @@
 
 🌐 **線上使用：[動態表單自動回報系統](https://cagoooo.github.io/form/)**
 
+> 📌 **目前版本：v1.2.4**（依據 `package.json`）
+
 這是一個基於 React 與 Firebase 的動態表單系統，旨在取代舊有的 Google Apps Script 表單。
 
 ## ✨ 功能特色
