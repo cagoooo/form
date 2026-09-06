@@ -1,5 +1,7 @@
 # Form System (React + Firebase)
 
+🌐 **線上使用：[動態表單自動回報系統](https://cagoooo.github.io/form/)**
+
 這是一個基於 React 與 Firebase 的動態表單系統，旨在取代舊有的 Google Apps Script 表單。
 
 ## ✨ 功能特色
@@ -81,7 +83,7 @@ firebase deploy
 - Repository：`cagoooo/form`
 - 可見性：公開
 - 主要技術：JavaScript、React、Vite、Firebase、Tailwind CSS
-- 線上入口：未在 GitHub repository metadata 設定
+- 線上入口：<https://cagoooo.github.io/form/>
 
 ### 可以怎麼應用
 
