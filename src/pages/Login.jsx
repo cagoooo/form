@@ -37,7 +37,8 @@ const Login = () => {
         setError('');
         setLoading(true);
         try {
-            await loginWithGoogle();
+            const result = await loginWithGoogle();
+            if (result === null) setLoading(false); // App 內建瀏覽器：已提醒，視為取消
             // 不要在這裡 navigate，等待 useEffect 觸發
         } catch (err) {
             console.error("Google Login failed:", err);
