@@ -8,6 +8,7 @@ import UserManager from '../components/UserManager';
 import SystemStats from '../components/SystemStats';
 import ConfirmModal from '../components/ConfirmModal';
 import { defaultTemplates } from '../data/defaultTemplates';
+import SiteFooter from '../components/SiteFooter';
 
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('forms');
@@ -225,6 +226,8 @@ const AdminDashboard = () => {
                         <SystemStats />
                     )}
                 </div>
+
+                <SiteFooter />
             </div>
 
             {/* Delete Confirmation Modal */}

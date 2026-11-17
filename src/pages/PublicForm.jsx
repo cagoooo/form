@@ -7,6 +7,7 @@ import DraftRestoreDialog from '../components/DraftRestoreDialog';
 import AutoSaveIndicator from '../components/AutoSaveIndicator';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import SiteFooter from '../components/SiteFooter';
 
 const PublicForm = () => {
     const { templateId } = useParams();
@@ -243,6 +244,7 @@ const PublicForm = () => {
                 <div className="text-center text-slate-500 text-sm">
                     Powered by <span className="font-bold text-slate-700">Dynamic Form System</span>
                 </div>
+                <SiteFooter compact className="-mt-4" />
             </div>
         </div>
     );

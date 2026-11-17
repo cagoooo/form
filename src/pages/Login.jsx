@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Lock, ArrowRight, ShieldCheck, LogIn } from 'lucide-react';
+import SiteFooter from '../components/SiteFooter';
 
 const Login = () => {
     const [password, setPassword] = useState('');
@@ -46,7 +47,7 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 mesh-bg relative overflow-hidden">
+        <div className="min-h-screen flex flex-col items-center justify-center gap-8 p-4 mesh-bg relative overflow-hidden">
             {/* Decorative Blobs */}
             <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float"></div>
             <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-yellow-400 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDelay: '2s' }}></div>
@@ -113,6 +114,8 @@ const Login = () => {
                     </p>
                 </div>
             </div>
+
+            <SiteFooter className="w-full max-w-5xl relative z-10" />
         </div>
     );
 };
