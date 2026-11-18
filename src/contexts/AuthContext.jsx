@@ -60,12 +60,13 @@ export const AuthProvider = ({ children }) => {
         return signInWithPopup(auth, provider);
     };
 
+    // 共用管理員帳號：密碼只能由使用者親手輸入。
+    // 不可再用建置時注入的密碼當備援（舊版會把密碼打包進前端 JS，任何人都看得到，空白送出也能登入）。
     const loginWithSharedAccount = (password) => {
-        return signInWithEmailAndPassword(
-            auth,
-            import.meta.env.VITE_ADMIN_EMAIL,
-            password || import.meta.env.VITE_ADMIN_PASSWORD
-        );
+        if (!password) {
+            return Promise.reject(Object.assign(new Error('請輸入管理員密碼'), { code: 'auth/missing-password' }));
+        }
+        return signInWithEmailAndPassword(auth, import.meta.env.VITE_ADMIN_EMAIL, password);
     };
 
     const logout = () => {

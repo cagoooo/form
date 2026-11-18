@@ -21,6 +21,10 @@ const Login = () => {
     const handlePasswordLogin = async (e) => {
         e.preventDefault();
         setError('');
+        if (!password) {
+            setError('請輸入管理員密碼');
+            return;
+        }
         setLoading(true);
         try {
             // Pass the password directly to Firebase Auth
@@ -92,6 +96,7 @@ const Login = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="輸入管理員密碼"
+                                required
                                 autoComplete="current-password"
                                 className={`input-field pl-10 ${error ? 'ring-2 ring-red-500' : ''}`}
                             />
