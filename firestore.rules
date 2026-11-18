@@ -14,13 +14,22 @@ service cloud.firestore {
          request.auth.token.email == 'admin@form.system');
     }
 
-    // Users collection: 
-    // - Users can read/write their own profile
-    // - Admins can read all profiles (for User Management)
-    // - Admins can write all profiles (to promote/demote users)
+    // Users collection:
+    // - 本人可讀自己的資料；管理員可讀全部（使用者管理）
+    // - 本人只能在「第一次登入」建立自己的資料，身分只能是 editor（共用管理員帳號 admin@form.system 才能是 admin），
+    //   email 必須是自己的、欄位只能有 email／role／createdAt
+    // - 改身分（升降級）與刪除：只有管理員
+    // 2026-11-18 修正：舊規則允許本人寫自己的整份文件（含 role），任何 Google 帳號都能把自己改成 admin。
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAdmin() || (
+        isAuthenticated() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['email', 'role', 'createdAt'])
+        && request.resource.data.email == request.auth.token.email
+        && (request.resource.data.role == 'editor'
+            || (request.resource.data.role == 'admin' && request.auth.token.email == 'admin@form.system'))
+      );
+      allow update, delete: if isAdmin();
     }
 
     // Templates: 
